@@ -132,4 +132,30 @@ video {
   margin: 0.5rem 0 0;
   font-size: 1.1rem;
   opacity: 0.9;
+}
+
+.play-tts-button {
+  margin-top: 1rem;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  background-color: #34d399;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.play-tts-button:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+}
+
+.play-tts-button:active {
+  transform: translateY(0);
 } 

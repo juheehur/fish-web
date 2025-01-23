@@ -77,6 +77,13 @@ const Fishcam = () => {
     }
   };
 
+  const handlePlayTTS = () => {
+    if (response) {
+      const speech = new SpeechSynthesisUtterance(response);
+      window.speechSynthesis.speak(speech);
+    }
+  };
+
   return (
     <div className="fishcam-container">
       <div className="camera-section">
@@ -88,6 +95,16 @@ const Fishcam = () => {
           <span className="button-icon">📸</span>
           {isLoading ? 'Analyzing...' : 'Capture & Analyze'}
         </button>
+
+        {response && (
+          <button 
+            onClick={handlePlayTTS}
+            className="play-tts-button"
+          >
+            <span className="button-icon">🔊</span>
+            Play Again
+          </button>
+        )}
 
         <div className="video-container">
           <video 
