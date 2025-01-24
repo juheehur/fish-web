@@ -5,40 +5,51 @@ import { db } from '../firebase';
 import { Aquarium } from './Aquarium';
 
 const Container = styled.div`
+  min-height: 100vh;
+  background: #FFFFFF;
   padding: 20px;
   padding-bottom: 80px;
 `;
 
 const Header = styled.div`
-  margin-bottom: 20px;
+  padding: 32px 0;
+  text-align: left;
+  margin-bottom: 40px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 `;
 
-const Title = styled.h1`
-  font-size: 24px;
-  color: #2D3748;
+const Title = styled.h2`
+  color: #1D1D1F;
   margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
 `;
 
 const Stats = styled.p`
-  color: #718096;
+  color: #86868B;
+  font-size: 17px;
   margin: 8px 0 0 0;
+  letter-spacing: -0.022em;
 `;
 
 const AquariumWrapper = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
   background: #F0F9FF;
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 24px;
+  padding: 24px;
   min-height: 500px;
-  margin: 0 -20px;
-  position: relative;
 `;
 
 const LoadingContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
-  color: #718096;
+  height: 300px;
+  color: #86868B;
+  font-size: 17px;
+  letter-spacing: -0.022em;
 `;
 
 const EmptyContainer = styled.div`
@@ -46,68 +57,110 @@ const EmptyContainer = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
-  color: #718096;
+  height: 300px;
+  color: #86868B;
+  font-size: 17px;
+  letter-spacing: -0.022em;
   text-align: center;
-  gap: 12px;
+`;
 
+const FishDetails = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 24px;
+  border-radius: 16px;
+  max-width: 400px;
+  width: 90%;
+  z-index: 1000;
+  
+  h3 {
+    color: #1D1D1F;
+    margin: 0 0 16px 0;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+  
   p {
-    margin: 0;
-    font-size: 16px;
+    color: #86868B;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0 0 12px 0;
+    letter-spacing: -0.022em;
+  }
+`;
+
+const Overlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #86868B;
+  cursor: pointer;
+  padding: 4px;
+  
+  &:hover {
+    color: #1D1D1F;
   }
 `;
 
 const FishTank = () => {
   const [collectedFish, setCollectedFish] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [selectedFish, setSelectedFish] = useState(null);
 
   useEffect(() => {
-    try {
-      console.log('Connecting to Firebase...');
-      const q = query(collection(db, 'scannedFish'), orderBy('timestamp', 'desc'));
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        console.log('Received Firestore update:', snapshot.size, 'documents');
-        const fishData = snapshot.docs.map(doc => {
-          console.log('Fish data:', doc.data());
-          return {
-            id: doc.id,
-            ...doc.data(),
-            timestamp: doc.data().timestamp?.toDate()
-          };
-        });
-        setCollectedFish(fishData);
-        setLoading(false);
-      }, (error) => {
-        console.error('Firestore error:', error);
-        setError(error.message);
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    } catch (error) {
-      console.error('Setup error:', error);
-      setError(error.message);
+    console.log('Connecting to Firebase...');
+    const q = query(collection(db, 'scannedFish'), orderBy('timestamp', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('Received Firestore update:', snapshot.size, 'documents');
+      const fishData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate()
+      }));
+      setCollectedFish(fishData);
       setLoading(false);
-    }
+    }, (error) => {
+      console.error('Firestore error:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  const handleFishClick = (fish) => {
+    setSelectedFish(fish);
+  };
+
+  const closeDetails = () => {
+    setSelectedFish(null);
+  };
 
   if (loading) {
     return (
       <Container>
+        <Header>
+          <Title>My Fish Tank</Title>
+          <Stats>Loading...</Stats>
+        </Header>
         <LoadingContainer>Loading your fish collection...</LoadingContainer>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container>
-        <EmptyContainer>
-          <p>Error loading fish collection</p>
-          <p>{error}</p>
-        </EmptyContainer>
       </Container>
     );
   }
@@ -120,15 +173,27 @@ const FishTank = () => {
       </Header>
       
       <AquariumWrapper>
-        {collectedFish.length === 0 ? (
+        {collectedFish.length > 0 ? (
+          <Aquarium collectedFish={collectedFish} onFishClick={handleFishClick} />
+        ) : (
           <EmptyContainer>
             <p>No fish collected yet!</p>
-            <p>Use the camera to scan and collect fish</p>
+            <p>Scan QR codes to add fish to your collection.</p>
           </EmptyContainer>
-        ) : (
-          <Aquarium collectedFish={collectedFish} />
         )}
       </AquariumWrapper>
+
+      {selectedFish && (
+        <>
+          <Overlay onClick={closeDetails} />
+          <FishDetails>
+            <CloseButton onClick={closeDetails}>&times;</CloseButton>
+            <h3>{selectedFish.fishType}</h3>
+            <p>{selectedFish.description}</p>
+            <p>Captured: {selectedFish.timestamp?.toLocaleDateString()}</p>
+          </FishDetails>
+        </>
+      )}
     </Container>
   );
 };

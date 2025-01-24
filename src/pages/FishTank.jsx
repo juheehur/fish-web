@@ -137,6 +137,51 @@ const EmptyContainer = styled.div`
   }
 `;
 
+const Overlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+`;
+
+const FishDetails = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 80%;
+  max-width: 600px;
+  z-index: 1000;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 24px;
+    color: #2B6CB0;
+  }
+
+  p {
+    margin: 0;
+    font-size: 16px;
+  }
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+`;
+
 const FishTank = () => {
   const [collectedFish, setCollectedFish] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -144,6 +189,7 @@ const FishTank = () => {
   const [lastCleaned, setLastCleaned] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [showStatus, setShowStatus] = useState(false);
+  const [selectedFish, setSelectedFish] = useState(null);
 
   useEffect(() => {
     const loadCollectedFish = async () => {
@@ -191,15 +237,18 @@ const FishTank = () => {
 
   const canClean = !lastCleaned || (new Date() - lastCleaned) > 60000; // 60 seconds cooldown
 
+  const handleFishClick = (fish) => {
+    setSelectedFish(fish);
+  };
+
   if (loading) {
     return (
       <Container>
         <Header>
           <Title>My Fish Tank</Title>
+          <Stats>Loading...</Stats>
         </Header>
-        <LoadingContainer>
-          Loading your aquarium...
-        </LoadingContainer>
+        <LoadingContainer>Loading your fish collection...</LoadingContainer>
       </Container>
     );
   }
@@ -214,7 +263,10 @@ const FishTank = () => {
         <StatusMessage $isVisible={showStatus}>
           {statusMessage}
         </StatusMessage>
-        <Aquarium collectedFish={collectedFish} />
+        <Aquarium 
+          collectedFish={collectedFish} 
+          onFishClick={handleFishClick}
+        />
         <Controls>
           <Button 
             variant="feed" 
@@ -233,6 +285,18 @@ const FishTank = () => {
           </Button>
         </Controls>
       </AquariumWrapper>
+
+      {selectedFish && (
+        <>
+          <Overlay onClick={() => setSelectedFish(null)} />
+          <FishDetails>
+            <CloseButton onClick={() => setSelectedFish(null)}>&times;</CloseButton>
+            <h3>{selectedFish.fishType}</h3>
+            <p>{selectedFish.description}</p>
+            <p>Captured: {selectedFish.timestamp?.toLocaleDateString()}</p>
+          </FishDetails>
+        </>
+      )}
     </Container>
   );
 };

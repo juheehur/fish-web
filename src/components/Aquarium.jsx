@@ -66,7 +66,7 @@ const FishDetails = styled.div`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 `;
 
-export const Aquarium = ({ collectedFish }) => {
+export const Aquarium = ({ collectedFish, onFishClick }) => {
   const [fishPositions, setFishPositions] = useState([]);
   const [selectedFish, setSelectedFish] = useState(null);
   const containerRef = useRef(null);
@@ -374,10 +374,11 @@ export const Aquarium = ({ collectedFish }) => {
   }, []);
 
   const handleFishClick = (fish, event) => {
-    if (selectedFish?.id === fish.id) {
-      handleCloseDetails();
-    } else {
-      setSelectedFish(fish);
+    if (onFishClick) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const clickY = event.clientY - rect.top;
+      onFishClick({ ...fish, clickX, clickY });
     }
   };
 
