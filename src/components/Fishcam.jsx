@@ -2,7 +2,152 @@ import React, { useRef, useState, useEffect } from 'react';
 import OpenAI from 'openai';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import styled from 'styled-components';
+import { MdCameraswitch, MdCamera } from 'react-icons/md';
 import '../styles/Fishcam.css';
+
+const CameraContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+`;
+
+const Video = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const CameraControls = styled.div`
+  position: absolute;
+  bottom: 100px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  z-index: 10;
+`;
+
+const CameraButton = styled.button`
+  width: ${props => props.$capture ? '70px' : '50px'};
+  height: ${props => props.$capture ? '70px' : '50px'};
+  border-radius: 50%;
+  border: none;
+  background: ${props => props.$capture ? '#2B6CB0' : 'rgba(255, 255, 255, 0.3)'};
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    transform: scale(1.1);
+    background: ${props => props.$capture ? '#2C5282' : 'rgba(255, 255, 255, 0.4)'};
+  }
+
+  svg {
+    width: ${props => props.$capture ? '30px' : '24px'};
+    height: ${props => props.$capture ? '30px' : '24px'};
+  }
+`;
+
+const LoadingOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+`;
+
+const ResultPopup = styled.div`
+  position: absolute;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  box-sizing: border-box;
+  animation: slideUp 0.3s ease-out;
+  z-index: 20;
+
+  @keyframes slideUp {
+    from {
+      transform: translate(-50%, 100%);
+      opacity: 0;
+    }
+    to {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+  }
+`;
+
+const ResultText = styled.p`
+  margin: 10px 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #2D3748;
+`;
+
+const PlayButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #2B6CB0;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin-top: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+
+  &:hover {
+    background: #2C5282;
+    transform: scale(1.02);
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #4A5568;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 20px;
+  
+  &:hover {
+    color: #2D3748;
+  }
+`;
 
 const openai = new OpenAI({
   apiKey: process.env.REACT_APP_OPENAI_API_KEY,
@@ -12,22 +157,45 @@ const openai = new OpenAI({
 const Fishcam = () => {
   const videoRef = useRef(null);
   const audioRef = useRef(new Audio());
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [capturedImage, setCapturedImage] = useState(null);
   const [response, setResponse] = useState('');
-
-  // Initialize camera when component mounts
-  React.useEffect(() => {
-    startCamera();
-  }, []);
+  const [facingMode, setFacingMode] = useState('environment');
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      videoRef.current.srcObject = stream;
+      setIsLoading(true);
+      const constraints = {
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
     } catch (err) {
-      console.error("Error accessing camera:", err);
+      console.error('Error accessing camera:', err);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    startCamera();
+    return () => {
+      if (videoRef.current?.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+    };
+  }, [facingMode]);
+
+  const handleSwitchCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
   };
 
   const textToSpeech = async (text) => {
@@ -68,10 +236,21 @@ const Fishcam = () => {
     }
   };
 
+  const getFishType = (description) => {
+    const lowerDesc = description.toLowerCase();
+    if (lowerDesc.includes('tiger barb') || lowerDesc.includes('tigerbarb')) {
+      return 'tiger-berb';
+    }
+    // Add more fish type mappings here
+    return 'goldfish'; // default fish type
+  };
+
   const saveFishData = async (fishData) => {
     try {
+      const fishType = getFishType(fishData.description);
       const docRef = await addDoc(collection(db, 'scannedFish'), {
-        ...fishData,
+        description: fishData.description,
+        fishType: fishType,
         timestamp: serverTimestamp(),
       });
       console.log('Fish data saved with ID:', docRef.id);
@@ -119,7 +298,6 @@ const Fishcam = () => {
       if (!message.toLowerCase().includes('fish is not detected')) {
         const fishData = {
           description: message,
-          imageUrl: imageBase64,
         };
         await saveFishData(fishData);
       }
@@ -151,48 +329,38 @@ const Fishcam = () => {
   }, []);
 
   return (
-    <div className="fishcam-container">
-      <div className="camera-section">
-        <button 
-          onClick={handleCapture}
-          disabled={isLoading}
-          className="capture-button"
-        >
-          <span className="button-icon">📸</span>
-          {isLoading ? 'Analyzing...' : 'Capture & Analyze'}
-        </button>
-
-        {response && (
-          <button 
-            onClick={handlePlayTTS}
-            className="play-tts-button"
-          >
-            <span className="button-icon">🔊</span>
-            Play Again
-          </button>
-        )}
-
-        <div className="video-container">
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-          />
-          {capturedImage && (
-            <div className="captured-image">
-              <img src={capturedImage} alt="Captured" />
-            </div>
-          )}
-        </div>
-      </div>
+    <CameraContainer>
+      <Video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        onLoadedMetadata={() => setIsLoading(false)}
+      />
+      <CameraControls>
+        <CameraButton onClick={handleSwitchCamera}>
+          <MdCameraswitch />
+        </CameraButton>
+        <CameraButton $capture onClick={handleCapture}>
+          <MdCamera />
+        </CameraButton>
+      </CameraControls>
+      {isLoading && (
+        <LoadingOverlay>
+          Loading Camera...
+        </LoadingOverlay>
+      )}
 
       {response && (
-        <div className="response-section">
-          <h3>Analysis Result:</h3>
-          <p>{response}</p>
-        </div>
+        <ResultPopup>
+          <CloseButton onClick={() => setResponse('')}>×</CloseButton>
+          <ResultText>{response}</ResultText>
+          <PlayButton onClick={handlePlayTTS}>
+            <span>🔊</span> Play Again
+          </PlayButton>
+        </ResultPopup>
       )}
-    </div>
+    </CameraContainer>
   );
 };
 
