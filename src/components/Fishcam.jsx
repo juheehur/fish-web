@@ -94,7 +94,7 @@ const Fishcam = () => {
       
       // 2. Send to GPT Vision API
       const response = await openai.chat.completions.create({
-        model: "gpt-4-vision-preview",
+        model: "gpt-4o",
         messages: [
           {
             role: "user",
