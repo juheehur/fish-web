@@ -4,6 +4,7 @@ import gsap from 'gsap';
 import '../styles/Aquarium.css';
 import tigerBerbImage from '../assets/fish/tiger-berb.png';
 import goldfishImage from '../assets/fish/goldfish.png';
+import blueTangImage from '../assets/fish/blue-tang.png';
 
 const AquariumContainer = styled.div`
   width: 100%;
@@ -390,7 +391,8 @@ export const Aquarium = ({ collectedFish, onFishClick }) => {
     console.log('Getting image for fish type:', fishType);
     const fishImages = {
       'tiger-berb': tigerBerbImage,
-      'goldfish': goldfishImage
+      'goldfish': goldfishImage,
+      'blue-tang': blueTangImage
     };
     const imagePath = fishImages[fishType] || fishImages.goldfish;
     console.log('Selected image path:', imagePath);

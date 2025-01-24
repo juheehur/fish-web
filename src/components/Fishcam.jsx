@@ -20,6 +20,13 @@ const Fishcam = () => {
   const audioQueue = useRef([]);
   const isPlaying = useRef(false);
 
+  // VPN Notice component
+  const VPNNotice = () => (
+    <div className="vpn-notice">
+      ⚠️ Important Notice: Users in Hong Kong and China may need a VPN to access this feature due to regional restrictions.
+    </div>
+  );
+
   // Check for available cameras when component mounts
   useEffect(() => {
     const checkCameras = async () => {
@@ -138,8 +145,23 @@ const Fishcam = () => {
 
   const saveFishData = async (fishData) => {
     try {
+      // Extract fish type from the description
+      let fishType = 'unknown';
+      const description = fishData.description.toLowerCase().replace(/-/g, ' ');
+      
+      // Add mappings for different fish types with flexible matching
+      if (description.includes('blue tang') || description.includes('dory')) {
+        fishType = 'blue-tang';
+      } else if (description.match(/tiger\s*berb/)) {
+        fishType = 'tiger-berb';
+      } else if (description.match(/gold\s*fish/)) {
+        fishType = 'goldfish';
+      }
+
       const docRef = await addDoc(collection(db, 'scannedFish'), {
-        ...fishData,
+        fishType: fishType,
+        description: fishData.description,
+        imageUrl: fishData.imageUrl,
         timestamp: serverTimestamp(),
       });
       console.log('Fish data saved with ID:', docRef.id);
@@ -243,6 +265,7 @@ const Fishcam = () => {
 
   return (
     <div className="fishcam-container">
+      <VPNNotice />
       <div className="camera-section">
         <div className="camera-controls">
           <button 

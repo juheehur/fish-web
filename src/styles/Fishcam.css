@@ -223,4 +223,15 @@ video {
   .toggle-camera-button .button-icon {
     font-size: 20px;
   }
+}
+
+.vpn-notice {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 12px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  border: 1px solid #ffeeba;
+  text-align: center;
+  font-size: 14px;
 } 
