@@ -1,0 +1,138 @@
+.fishtank-container {
+  height: 100vh;
+  background: #E3F2FD;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 60px;
+}
+
+.tank-header {
+  padding: 20px;
+  text-align: center;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tank-header h2 {
+  color: #1565C0;
+  margin: 0 0 8px 0;
+}
+
+.collection-stats {
+  color: #666;
+  font-size: 14px;
+}
+
+.tank-view {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #E3F2FD 0%, #1565C0 100%);
+  margin: 20px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.tank-background {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: linear-gradient(0deg, rgba(244, 143, 177, 0.15) 0%, rgba(121, 134, 203, 0.15) 100%);
+  opacity: 0.8;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: white;
+  font-size: 18px;
+}
+
+.empty-tank {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+.empty-message h3 {
+  margin: 0 0 10px 0;
+  font-size: 20px;
+}
+
+.empty-message p {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.fish-collection {
+  position: relative;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.fish-item {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  transition: transform 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.fish-item:hover {
+  transform: translateY(-2px);
+}
+
+.fish-image-container {
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.fish-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fish-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.fish-header {
+  margin-bottom: 8px;
+}
+
+.capture-date {
+  color: #666;
+  font-size: 12px;
+}
+
+.fish-description {
+  color: #333;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  flex: 1;
+} 

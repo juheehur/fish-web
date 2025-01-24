@@ -1,10 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
 import OpenAI from 'openai';
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import '../styles/Fishcam.css';
 
 const openai = new OpenAI({
-  apiKey: process.env.REACT_APP_OPENAI_API_KEY, // Note: Changed to REACT_APP_ prefix
-  dangerouslyAllowBrowser: true // Required for client-side usage
+  apiKey: process.env.REACT_APP_OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true
 });
 
 const Fishcam = () => {
@@ -30,14 +32,14 @@ const Fishcam = () => {
 
   const textToSpeech = async (text) => {
     try {
-      console.log('Using API Key:', process.env.REACT_APP_ELEVENLABS_API_KEY); // 디버깅용
+      console.log('Using API Key:', process.env.REACT_APP_ELEVENLABS_API_KEY);
       
       const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL', {
         method: 'POST',
         headers: {
           'Accept': 'audio/mpeg',
           'Content-Type': 'application/json',
-          'xi-api-key': 'sk_7eaff6d44e8ecf0f75d991beb92729e8b52d0fee13ef32a6'  // API 키를 직접 입력
+          'xi-api-key': process.env.REACT_APP_ELEVENLABS_API_KEY
         },
         body: JSON.stringify({
           text: text,
@@ -66,6 +68,18 @@ const Fishcam = () => {
     }
   };
 
+  const saveFishData = async (fishData) => {
+    try {
+      const docRef = await addDoc(collection(db, 'scannedFish'), {
+        ...fishData,
+        timestamp: serverTimestamp(),
+      });
+      console.log('Fish data saved with ID:', docRef.id);
+    } catch (error) {
+      console.error('Error saving fish data:', error);
+    }
+  };
+
   const handleCapture = async () => {
     setIsLoading(true);
     try {
@@ -80,7 +94,7 @@ const Fishcam = () => {
       
       // 2. Send to GPT Vision API
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4-vision-preview",
         messages: [
           {
             role: "user",
@@ -101,7 +115,16 @@ const Fishcam = () => {
       const message = response.choices[0].message.content;
       setResponse(message);
       
-      // 3. Use ElevenLabs TTS instead of browser TTS
+      // Save to Firebase if fish is detected
+      if (!message.toLowerCase().includes('fish is not detected')) {
+        const fishData = {
+          description: message,
+          imageUrl: imageBase64,
+        };
+        await saveFishData(fishData);
+      }
+      
+      // 3. Use ElevenLabs TTS
       await textToSpeech(message);
 
     } catch (error) {
