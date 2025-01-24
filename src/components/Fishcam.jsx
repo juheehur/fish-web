@@ -17,6 +17,8 @@ const Fishcam = () => {
   const [response, setResponse] = useState('');
   const [facingMode, setFacingMode] = useState('user');
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  const audioQueue = useRef([]);
+  const isPlaying = useRef(false);
 
   // Check for available cameras when component mounts
   useEffect(() => {
@@ -70,6 +72,31 @@ const Fishcam = () => {
     setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
   };
 
+  // Process audio queue
+  const processAudioQueue = async () => {
+    if (isPlaying.current || audioQueue.current.length === 0) return;
+    
+    isPlaying.current = true;
+    const audioUrl = audioQueue.current[0];
+    
+    try {
+      const audio = new Audio(audioUrl);
+      
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        audioQueue.current.shift();
+        isPlaying.current = false;
+        processAudioQueue();
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error('Audio playback error:', error);
+      isPlaying.current = false;
+      processAudioQueue();
+    }
+  };
+
   const textToSpeech = async (text) => {
     if (!text.trim()) return;
     
@@ -101,14 +128,9 @@ const Fishcam = () => {
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       
-      // Create a new Audio instance for each chunk
-      const audio = new Audio(audioUrl);
-      await audio.play();
-      
-      // Cleanup URL after playing
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-      };
+      // Add to queue and process
+      audioQueue.current.push(audioUrl);
+      processAudioQueue();
     } catch (error) {
       console.error('TTS Error:', error);
     }
@@ -128,6 +150,10 @@ const Fishcam = () => {
 
   const handleCapture = async () => {
     setIsLoading(true);
+    // Clear any existing audio queue
+    audioQueue.current = [];
+    isPlaying.current = false;
+    
     try {
       // 1. Capture image
       const canvas = document.createElement('canvas');
@@ -167,22 +193,20 @@ const Fishcam = () => {
         fullResponse += content;
         currentChunk += content;
         
-        // Accumulate text until we have a complete sentence or phrase
+        // Process complete sentences
         if (content.includes('.') || content.includes('!') || content.includes('?')) {
           if (currentChunk.trim()) {
-            // Send the current chunk to TTS
-            textToSpeech(currentChunk);
+            await textToSpeech(currentChunk.trim());
             currentChunk = '';
           }
         }
         
-        // Update UI with the accumulated response
         setResponse(fullResponse);
       }
 
-      // Send any remaining text to TTS
+      // Process any remaining text
       if (currentChunk.trim()) {
-        textToSpeech(currentChunk);
+        await textToSpeech(currentChunk.trim());
       }
 
       // Save to Firebase if fish is detected
