@@ -208,13 +208,13 @@ const FishTank = () => {
     <Container>
       <Header>
         <Title>My Fish Tank</Title>
-        <Stats>Test Fish Swimming</Stats>
+        <Stats>{collectedFish.length} fish collected</Stats>
       </Header>
       <AquariumWrapper>
         <StatusMessage $isVisible={showStatus}>
           {statusMessage}
         </StatusMessage>
-        <Aquarium collectedFish={[]} />
+        <Aquarium collectedFish={collectedFish} />
         <Controls>
           <Button 
             variant="feed" 

@@ -1,41 +1,130 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import styled from 'styled-components';
 import gsap from 'gsap';
 import '../styles/Aquarium.css';
+import tigerBerbImage from '../assets/fish/tiger-berb.png';
+import goldfishImage from '../assets/fish/goldfish.png';
 
-// Import images with correct paths
-const goldfish = '/assets/fish/goldfish.png';
-const tigerBarb = '/assets/fish/tiger-berb.png';
+const AquariumContainer = styled.div`
+  width: 100%;
+  height: 500px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #BEE3F8 0%, #90CDF4 100%);
+`;
 
-const Aquarium = ({ collectedFish }) => {
-  const aquariumRef = useRef();
-  const fishRefs = useRef([]);
+const FishImage = styled.img`
+  position: absolute;
+  width: 50px;
+  height: auto;
+  transform: ${props => props.$isMovingLeft ? 'scaleX(-1)' : 'scaleX(1)'};
+  transition: transform 0.5s;
+  cursor: pointer;
+`;
+
+const Sand = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: #F6E05E;
+  border-radius: 0 0 16px 16px;
+`;
+
+const Seaweed = styled.div`
+  position: absolute;
+  bottom: 0;
+  width: 20px;
+  height: ${props => props.$height || '80px'};
+  background: #48BB78;
+  border-radius: 8px;
+  transform-origin: bottom;
+  animation: sway 3s ease-in-out infinite;
+  opacity: 0.8;
+
+  @keyframes sway {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+  }
+`;
+
+const FishDetails = styled.div`
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  max-width: 250px;
+  z-index: 10;
+  top: ${props => props.$top}px;
+  left: ${props => props.$left}px;
+  transform: translate(-50%, -100%);
+  margin-top: -10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+`;
+
+export const Aquarium = ({ collectedFish }) => {
+  const [fishPositions, setFishPositions] = useState([]);
   const [selectedFish, setSelectedFish] = useState(null);
-  const [detailsPosition, setDetailsPosition] = useState({ x: 0, y: 0 });
-  const [isClosing, setIsClosing] = useState(false);
+  const containerRef = useRef(null);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [waterClarity, setWaterClarity] = useState(100); // 100 = crystal clear, 0 = very dirty
 
-  // Add test fish for debugging
-  const testFish = [
-    {
-      id: 'test-fish-1',
-      type: 'tiger-barb',
-      description: 'This is a Tiger Barb fish',
-      timestamp: new Date()
-    },
-    {
-      id: 'test-fish-2',
-      type: 'goldfish',
-      description: 'This is a Goldfish',
-      timestamp: new Date()
+  useEffect(() => {
+    if (containerRef.current) {
+      setContainerDimensions({
+        width: containerRef.current.offsetWidth,
+        height: containerRef.current.offsetHeight,
+      });
     }
-  ];
-
-  // Use testFish for now
-  const displayFish = testFish;
+  }, []);
 
   useEffect(() => {
-    console.log('Fish Images:', { goldfish, tigerBarb }); // Debug log
-    console.log('Display Fish:', displayFish); // Debug log
+    if (containerDimensions.width === 0) return;
+
+    console.log('Setting up fish positions for:', collectedFish);
+    const initialPositions = collectedFish.map((fish) => ({
+      ...fish,
+      x: Math.random() * (containerDimensions.width - 100),
+      y: 60 + Math.random() * (containerDimensions.height - 180),
+      isMovingLeft: Math.random() > 0.5,
+      speed: 0.5 + Math.random() * 0.5,
+    }));
+
+    console.log('Initial positions:', initialPositions);
+    setFishPositions(initialPositions);
+
+    const interval = setInterval(() => {
+      setFishPositions(prevPositions => {
+        return prevPositions.map(fish => {
+          let newX = fish.x + (fish.isMovingLeft ? -1 : 1) * fish.speed;
+          let newIsMovingLeft = fish.isMovingLeft;
+
+          if (newX <= 0) {
+            newX = 0;
+            newIsMovingLeft = false;
+          } else if (newX >= containerDimensions.width - 50) {
+            newX = containerDimensions.width - 50;
+            newIsMovingLeft = true;
+          }
+
+          return {
+            ...fish,
+            x: newX,
+            isMovingLeft: newIsMovingLeft,
+          };
+        });
+      });
+    }, 16);
+
+    return () => clearInterval(interval);
+  }, [collectedFish, containerDimensions.width, containerDimensions.height]);
+
+  useEffect(() => {
+    console.log('Display Fish:', collectedFish);
 
     // Animate seaweed
     const seaweeds = document.querySelectorAll('.seaweed');
@@ -50,14 +139,14 @@ const Aquarium = ({ collectedFish }) => {
     });
 
     // Animate fish
-    fishRefs.current.forEach((fish, index) => {
+    fishPositions.forEach((fish, index) => {
       if (!fish) {
         console.log('Fish ref not found for index:', index);
         return;
       }
 
-      const aquariumHeight = aquariumRef.current?.clientHeight || 500;
-      const aquariumWidth = aquariumRef.current?.clientWidth || 800;
+      const aquariumHeight = containerRef.current?.clientHeight || 500;
+      const aquariumWidth = containerRef.current?.clientWidth || 800;
       const fishWidth = 80;
       const fishHeight = 50;
       
@@ -86,7 +175,7 @@ const Aquarium = ({ collectedFish }) => {
         const targetY = minY + Math.random() * (maxY - minY);
         
         // Only flip horizontally based on movement direction
-        const shouldFlip = targetX < fish.getBoundingClientRect().left;
+        const shouldFlip = targetX < fish.x;
         
         gsap.to(fish, {
           x: targetX,
@@ -125,7 +214,7 @@ const Aquarium = ({ collectedFish }) => {
       bubble.style.height = `${size}px`;
       bubble.style.left = `${Math.random() * 100}%`;
       bubble.style.bottom = '0';
-      aquariumRef.current?.appendChild(bubble);
+      containerRef.current?.appendChild(bubble);
 
       gsap.to(bubble, {
         y: -window.innerHeight,
@@ -145,8 +234,8 @@ const Aquarium = ({ collectedFish }) => {
         const newClarity = Math.max(0, prev - 5); // Decrease by 5% each time
         
         // Update visual effect
-        if (aquariumRef.current) {
-          gsap.to(aquariumRef.current, {
+        if (containerRef.current) {
+          gsap.to(containerRef.current, {
             filter: `brightness(${0.7 + (newClarity / 100) * 0.3})`,
             duration: 0.5
           });
@@ -160,33 +249,31 @@ const Aquarium = ({ collectedFish }) => {
       clearInterval(bubbleInterval);
       clearInterval(dirtyInterval);
     };
-  }, []);
+  }, [collectedFish, containerDimensions.width, containerDimensions.height]);
 
   // Function to create and animate food particles
   const createFoodParticles = () => {
-    const numParticles = 15; // Increased number of particles
+    const numParticles = 15;
     const foodPositions = [];
     
-    const aquariumHeight = aquariumRef.current?.clientHeight || 500;
-    const aquariumWidth = aquariumRef.current?.clientWidth || 800;
-    const fishWidth = 80; // Width of the fish image
-    const fishHeight = 50; // Approximate height of the fish image
+    const aquariumHeight = containerRef.current?.clientHeight || 500;
+    const aquariumWidth = containerRef.current?.clientWidth || 800;
+    const fishWidth = 80;
+    const fishHeight = 50;
     
     // Calculate safe swimming area with padding
     const padding = 20;
     const minX = padding;
     const maxX = aquariumWidth - fishWidth - padding;
     const minY = padding;
-    const maxY = aquariumHeight - fishHeight - padding - 60; // Extra space for sand
+    const maxY = aquariumHeight - fishHeight - padding - 60;
     
-    // First, create and animate all food particles
     for (let i = 0; i < numParticles; i++) {
       const particle = document.createElement('div');
       particle.className = 'food-particle';
       
-      // More spread out food distribution
-      const leftPosition = 10 + Math.random() * 80; // Use more of the width
-      const horizontalVariation = Math.random() * 20 - 10; // Add some horizontal drift
+      const leftPosition = 10 + Math.random() * 80;
+      const horizontalVariation = Math.random() * 20 - 10;
       
       particle.style.cssText = `
         position: absolute;
@@ -199,17 +286,16 @@ const Aquarium = ({ collectedFish }) => {
         left: ${leftPosition}%;
       `;
       
-      aquariumRef.current?.appendChild(particle);
+      containerRef.current?.appendChild(particle);
       
       // Store food position for fish to target
       foodPositions.push({
         left: leftPosition,
-        y: aquariumRef.current?.clientHeight - 100 - Math.random() * 50 // Vary final vertical position
+        y: containerRef.current?.clientHeight - 100 - Math.random() * 50
       });
 
-      // Animate food particle with some horizontal drift
       gsap.to(particle, {
-        y: aquariumRef.current?.clientHeight - 100 - Math.random() * 50,
+        y: containerRef.current?.clientHeight - 100 - Math.random() * 50,
         x: horizontalVariation,
         opacity: 1,
         duration: 2 + Math.random() * 2,
@@ -222,13 +308,13 @@ const Aquarium = ({ collectedFish }) => {
 
     // After a small delay, make fish swim towards food
     setTimeout(() => {
-      fishRefs.current.forEach((fish, index) => {
+      fishPositions.forEach((fish, index) => {
         if (!fish) return;
         
         // Pick a random food particle to target
         const targetFood = foodPositions[Math.floor(Math.random() * foodPositions.length)];
         const fishRect = fish.getBoundingClientRect();
-        const aquariumRect = aquariumRef.current.getBoundingClientRect();
+        const aquariumRect = containerRef.current.getBoundingClientRect();
         
         // Calculate relative position within aquarium
         const targetX = (targetFood.left / 100) * aquariumRect.width;
@@ -267,7 +353,7 @@ const Aquarium = ({ collectedFish }) => {
   // Function to clean the aquarium
   const cleanAquarium = () => {
     setWaterClarity(100);
-    gsap.to(aquariumRef.current, {
+    gsap.to(containerRef.current, {
       filter: 'brightness(1)',
       duration: 1
     });
@@ -291,73 +377,69 @@ const Aquarium = ({ collectedFish }) => {
     if (selectedFish?.id === fish.id) {
       handleCloseDetails();
     } else {
-      setIsClosing(false);
-      const rect = event.target.getBoundingClientRect();
-      setDetailsPosition({
-        x: rect.left + rect.width / 2,
-        y: rect.top
-      });
       setSelectedFish(fish);
     }
   };
 
   const handleCloseDetails = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setSelectedFish(null);
-      setIsClosing(false);
-    }, 300); // Match the animation duration
+    setSelectedFish(null);
   };
 
-  const fishImages = {
-    'goldfish': goldfish,
-    'tiger-barb': tigerBarb
+  const getFishImage = (fishType) => {
+    console.log('Getting image for fish type:', fishType);
+    const fishImages = {
+      'tiger-berb': tigerBerbImage,
+      'goldfish': goldfishImage
+    };
+    const imagePath = fishImages[fishType] || fishImages.goldfish;
+    console.log('Selected image path:', imagePath);
+    return imagePath;
   };
 
   return (
-    <div className="aquarium-container" ref={aquariumRef}>
+    <AquariumContainer ref={containerRef}>
       <div className="glass-reflection" />
       
       {/* Decorations */}
-      <div className="seaweed" style={{ left: '10%', height: '120px' }} />
-      <div className="seaweed" style={{ left: '30%', height: '90px' }} />
-      <div className="seaweed" style={{ left: '70%', height: '100px' }} />
-      <div className="seaweed" style={{ left: '85%', height: '80px' }} />
+      <Sand />
+      <Seaweed style={{ left: '10%' }} $height="80px" />
+      <Seaweed style={{ left: '25%' }} $height="100px" />
+      <Seaweed style={{ left: '40%' }} $height="70px" />
+      <Seaweed style={{ left: '60%' }} $height="90px" />
       
-      <div className="coral" style={{ left: '20%' }} />
-      <div className="coral" style={{ left: '50%', background: '#B794F4' }} />
-      <div className="coral" style={{ left: '80%', background: '#F687B3' }} />
-
-      {/* Fish */}
-      {displayFish.map((fish, index) => (
-        <img
-          key={fish.id}
-          ref={el => fishRefs.current[index] = el}
-          className="fish"
-          src={fishImages[fish.type] || fishImages['goldfish']}
-          alt={`Fish ${index + 1}`}
-          onClick={(e) => handleFishClick(fish, e)}
-        />
-      ))}
+      {fishPositions.map((fish, index) => {
+        console.log('Rendering fish:', fish);
+        return (
+          <FishImage
+            key={`${fish.id}-${index}`}
+            src={getFishImage(fish.fishType)}
+            alt={`Fish ${fish.id}`}
+            style={{
+              left: `${fish.x}px`,
+              top: `${fish.y}px`,
+              opacity: 1,
+              visibility: 'visible'
+            }}
+            $isMovingLeft={fish.isMovingLeft}
+            onClick={(e) => handleFishClick(fish, e)}
+            onError={(e) => console.error('Error loading fish image:', e)}
+            onLoad={() => console.log('Fish image loaded successfully')}
+          />
+        );
+      })}
 
       {selectedFish && (
-        <div 
-          className="fish-details"
-          style={{ 
-            top: detailsPosition.y,
-            left: detailsPosition.x,
-            animation: isClosing ? 'popOut 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'popIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-          }}
+        <FishDetails
+          $top={selectedFish.clickY}
+          $left={selectedFish.clickX}
+          onClick={handleCloseDetails}
         >
-          <button className="close-button" onClick={handleCloseDetails} aria-label="Close details" />
           <h3>Fish Details</h3>
           <p>{selectedFish.description}</p>
           <p>Captured: {selectedFish.timestamp?.toLocaleDateString()}</p>
-        </div>
+        </FishDetails>
       )}
-
-      <div className="sand" />
-    </div>
+    </AquariumContainer>
   );
 };
 
