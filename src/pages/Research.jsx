@@ -11,6 +11,51 @@ const MISSION_IMAGES = [
   'https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?auto=format&fit=crop&w=800&q=80'  // Bioluminescent organisms
 ];
 
+const MISSION_TASKS = {
+  1: [
+    "Document sightings of Black-scaled Ray in designated areas",
+    "Collect water samples from ray habitats",
+    "Photograph ray behavior patterns",
+    "Record depth and temperature data",
+    "Submit comprehensive report with findings"
+  ],
+  2: [
+    "Monitor coral color changes in 3 different locations",
+    "Measure and record water temperature daily",
+    "Test pH levels in affected areas",
+    "Photograph coral conditions with timestamp",
+    "Submit environmental data report"
+  ],
+  3: [
+    "Map seagrass bed locations",
+    "Measure seagrass density in sample areas",
+    "Document marine life in seagrass zones",
+    "Collect growth rate data",
+    "Submit ecosystem analysis report"
+  ],
+  4: [
+    "Collect plankton samples from surface waters",
+    "Analyze species diversity in samples",
+    "Record water conditions and time of collection",
+    "Document plankton distribution patterns",
+    "Submit species identification report"
+  ],
+  5: [
+    "Track and record sea turtle sightings",
+    "Document feeding behavior patterns",
+    "Map migration routes using GPS data",
+    "Photograph turtle identification marks",
+    "Submit tracking data and observations"
+  ],
+  6: [
+    "Identify bioluminescent species present",
+    "Record depth of organism sightings",
+    "Document time patterns of luminescence",
+    "Measure light intensity levels",
+    "Submit species catalog with photos"
+  ]
+};
+
 const Research = () => {
   const [researchMissions, setResearchMissions] = useState([
     {
@@ -18,10 +63,10 @@ const Research = () => {
       title: "Exploration Mission to Locate the Black-scaled Ray",
       description: "The Oceanic Advanced Research Institute invites global ocean exploration enthusiasts and professional divers to join...",
       image: MISSION_IMAGES[0],
-      score: 100,
-      achievementCount: 56,
-      myScore: 3860,
-      withdrawable: 38.6,
+      score: 5,          // Base score per task completion
+      achievementCount: 0,
+      myScore: 0,        // Accumulated score
+      withdrawable: 0,    // $1 per 5 points
       deadline: "February 18, 2025"
     },
     {
@@ -29,10 +74,10 @@ const Research = () => {
       title: "Coral Bleaching Monitoring Mission",
       description: "Observe and document coral reefs in designated areas to track signs of bleaching. Record water temperature, pH levels...",
       image: MISSION_IMAGES[1],
-      score: 50,
-      achievementCount: 32,
-      myScore: 1250,
-      withdrawable: 12.5,
+      score: 4,
+      achievementCount: 0,
+      myScore: 0,
+      withdrawable: 0,
       deadline: "February 28, 2025"
     },
     {
@@ -40,10 +85,10 @@ const Research = () => {
       title: "Seagrass Ecosystem Health Survey",
       description: "Assess seagrass coverage, density, and associated marine life. Provide photographs and measurements of coverage area...",
       image: MISSION_IMAGES[2],
-      score: 80,
-      achievementCount: 41,
-      myScore: 2400,
-      withdrawable: 24.0,
+      score: 3,
+      achievementCount: 0,
+      myScore: 0,
+      withdrawable: 0,
       deadline: "April 10, 2025"
     },
     {
@@ -51,10 +96,10 @@ const Research = () => {
       title: "Plankton Diversity and Distribution Study",
       description: "Collect and analyze plankton samples from specified areas. Identify key species and record water conditions...",
       image: MISSION_IMAGES[3],
-      score: 100,
-      achievementCount: 28,
-      myScore: 3100,
-      withdrawable: 31.0,
+      score: 4,
+      achievementCount: 0,
+      myScore: 0,
+      withdrawable: 0,
       deadline: "April 20, 2025"
     },
     {
@@ -62,10 +107,10 @@ const Research = () => {
       title: "Tracking Sea Turtle Migration Patterns",
       description: "Observe and record sightings of tagged sea turtles to contribute to ongoing research. Requirements: Use a tracking app...",
       image: MISSION_IMAGES[4],
-      score: 120,
-      achievementCount: 35,
-      myScore: 4200,
-      withdrawable: 42.0,
+      score: 6,
+      achievementCount: 0,
+      myScore: 0,
+      withdrawable: 0,
       deadline: "May 15, 2025"
     },
     {
@@ -73,10 +118,10 @@ const Research = () => {
       title: "Survey of Bioluminescent Organisms",
       description: "Identify and photograph bioluminescent organisms in designated marine areas. Document depth, time, and conditions...",
       image: MISSION_IMAGES[5],
-      score: 90,
-      achievementCount: 44,
-      myScore: 2800,
-      withdrawable: 28.0,
+      score: 5,
+      achievementCount: 0,
+      myScore: 0,
+      withdrawable: 0,
       deadline: "May 25, 2025"
     }
   ]);
@@ -85,6 +130,8 @@ const Research = () => {
   const [completedMissions, setCompletedMissions] = useState([]);
   const [totalScore, setTotalScore] = useState(0);
   const [totalWithdrawable, setTotalWithdrawable] = useState(0);
+  const [missionProgress, setMissionProgress] = useState({});
+  const [showMissionDetails, setShowMissionDetails] = useState(false);
 
   useEffect(() => {
     // Calculate total score and withdrawable amount
@@ -96,20 +143,87 @@ const Research = () => {
 
   const handleMissionSelect = (mission) => {
     setSelectedMission(mission);
+    setShowMissionDetails(true);
+    // Initialize progress if not exists
+    if (!missionProgress[mission.id]) {
+      setMissionProgress(prev => ({
+        ...prev,
+        [mission.id]: {
+          tasksCompleted: 0,
+          totalTasks: 5,
+          completedTasks: [],
+          lastActivity: null,
+          notes: '',
+          photos: []
+        }
+      }));
+    }
+  };
+
+  const closeMissionDetails = () => {
+    setShowMissionDetails(false);
+    setSelectedMission(null);
+  };
+
+  const handleAddNote = (missionId, note) => {
+    setMissionProgress(prev => ({
+      ...prev,
+      [missionId]: {
+        ...prev[missionId],
+        notes: note,
+        lastActivity: new Date().toISOString()
+      }
+    }));
+  };
+
+  const handleTaskComplete = (missionId, taskIndex) => {
+    setMissionProgress(prev => {
+      const currentProgress = prev[missionId] || {
+        tasksCompleted: 0,
+        totalTasks: 5,
+        completedTasks: [],
+        lastActivity: null,
+        notes: '',
+        photos: []
+      };
+
+      // Check if task is already completed
+      if (currentProgress.completedTasks.includes(taskIndex)) {
+        return prev;
+      }
+
+      const updatedProgress = {
+        ...currentProgress,
+        tasksCompleted: currentProgress.tasksCompleted + 1,
+        completedTasks: [...currentProgress.completedTasks, taskIndex],
+        lastActivity: new Date().toISOString()
+      };
+
+      // Check if all tasks are completed
+      if (updatedProgress.tasksCompleted >= updatedProgress.totalTasks) {
+        handleMissionComplete(missionId);
+      }
+
+      return {
+        ...prev,
+        [missionId]: updatedProgress
+      };
+    });
   };
 
   const handleMissionComplete = (missionId) => {
     // Mark mission as completed
     setCompletedMissions([...completedMissions, missionId]);
     
-    // Update mission status
+    // Update mission status with realistic rewards
     const updatedMissions = researchMissions.map(mission => {
       if (mission.id === missionId) {
+        const newScore = mission.myScore + mission.score;
         return {
           ...mission,
           achievementCount: mission.achievementCount + 1,
-          myScore: mission.myScore + mission.score,
-          withdrawable: mission.withdrawable + (mission.score / 100)
+          myScore: newScore,
+          withdrawable: Math.floor(newScore / 5)  // $1 for every 5 points
         };
       }
       return mission;
@@ -164,30 +278,92 @@ const Research = () => {
               <div className="mission-stats">
                 <span>Score: {mission.score}</span>
                 <span>DDL: {mission.deadline}</span>
+                {missionProgress[mission.id] && (
+                  <span className="progress-indicator">
+                    {missionProgress[mission.id].tasksCompleted}/{missionProgress[mission.id].totalTasks}
+                  </span>
+                )}
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {selectedMission && (
+      {showMissionDetails && selectedMission && (
         <div className="mission-details">
-          <h2>{selectedMission.title}</h2>
-          <p>{selectedMission.description}</p>
-          <div className="mission-actions">
-            <button onClick={() => handleMissionComplete(selectedMission.id)}>
-              Complete Mission
-            </button>
+          <button className="close-button" onClick={closeMissionDetails}>×</button>
+          
+          <div className="mission-details-content">
+            <img src={selectedMission.image} alt={selectedMission.title} className="detail-image"/>
+            
+            <h2>{selectedMission.title}</h2>
+            <div className="mission-metadata">
+              <span>Score: {selectedMission.score}</span>
+              <span>Deadline: {selectedMission.deadline}</span>
+              <span>Achievements: {selectedMission.achievementCount}</span>
+            </div>
+            
+            <p className="detailed-description">{selectedMission.description}</p>
+            
+            <div className="progress-section">
+              <h3>Mission Tasks</h3>
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill" 
+                  style={{
+                    width: `${(missionProgress[selectedMission.id]?.tasksCompleted / missionProgress[selectedMission.id]?.totalTasks) * 100}%`
+                  }}
+                ></div>
+              </div>
+              <p>{missionProgress[selectedMission.id]?.tasksCompleted || 0}/{missionProgress[selectedMission.id]?.totalTasks} tasks completed</p>
+              
+              <div className="task-list">
+                {MISSION_TASKS[selectedMission.id].map((task, index) => (
+                  <div 
+                    key={index} 
+                    className={`task-item ${missionProgress[selectedMission.id]?.completedTasks.includes(index) ? 'completed' : ''}`}
+                    onClick={() => handleTaskComplete(selectedMission.id, index)}
+                  >
+                    <div className="task-checkbox">
+                      {missionProgress[selectedMission.id]?.completedTasks.includes(index) && (
+                        <span className="checkmark">✓</span>
+                      )}
+                    </div>
+                    <span className="task-text">{task}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="notes-section">
+              <h3>Research Notes</h3>
+              <textarea
+                value={missionProgress[selectedMission.id]?.notes || ''}
+                onChange={(e) => handleAddNote(selectedMission.id, e.target.value)}
+                placeholder="Add your research notes here..."
+                className="research-notes"
+              />
+            </div>
+
             {selectedMission.withdrawable > 0 && (
-              <button onClick={() => handleWithdraw(selectedMission.id)}>
+              <button 
+                className="withdraw-button"
+                onClick={() => handleWithdraw(selectedMission.id)}
+              >
                 Withdraw ${selectedMission.withdrawable.toFixed(1)}
               </button>
+            )}
+
+            {missionProgress[selectedMission.id]?.lastActivity && (
+              <p className="last-activity">
+                Last activity: {new Date(missionProgress[selectedMission.id].lastActivity).toLocaleString()}
+              </p>
             )}
           </div>
         </div>
       )}
 
-      {totalWithdrawable > 0 && (
+      {totalWithdrawable > 0 && !showMissionDetails && (
         <button className="withdraw-all" onClick={handleWithdrawAll}>
           Withdraw All ${totalWithdrawable.toFixed(1)}
         </button>

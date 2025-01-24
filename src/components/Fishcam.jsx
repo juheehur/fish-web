@@ -15,25 +15,65 @@ const Fishcam = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [response, setResponse] = useState('');
+  const [facingMode, setFacingMode] = useState('user');
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
 
-  // Initialize camera when component mounts
-  React.useEffect(() => {
-    startCamera();
+  // Check for available cameras when component mounts
+  useEffect(() => {
+    const checkCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        setHasMultipleCameras(videoDevices.length > 1);
+      } catch (err) {
+        console.error("Error checking cameras:", err);
+        setHasMultipleCameras(false);
+      }
+    };
+    checkCameras();
   }, []);
+
+  // Initialize camera when component mounts or facingMode changes
+  useEffect(() => {
+    startCamera();
+    // Cleanup function to stop the camera stream
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+    };
+  }, [facingMode]);
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current && videoRef.current.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: facingMode,
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 15, max: 24 }
+        } 
+      });
       videoRef.current.srcObject = stream;
     } catch (err) {
       console.error("Error accessing camera:", err);
     }
   };
 
+  const toggleCamera = () => {
+    setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
+  };
+
   const textToSpeech = async (text) => {
+    if (!text.trim()) return;
+    
     try {
-      console.log('Using API Key:', process.env.REACT_APP_ELEVENLABS_API_KEY);
-      
       const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL', {
         method: 'POST',
         headers: {
@@ -61,8 +101,14 @@ const Fishcam = () => {
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       
-      audioRef.current.src = audioUrl;
-      await audioRef.current.play();
+      // Create a new Audio instance for each chunk
+      const audio = new Audio(audioUrl);
+      await audio.play();
+      
+      // Cleanup URL after playing
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+      };
     } catch (error) {
       console.error('TTS Error:', error);
     }
@@ -92,8 +138,8 @@ const Fishcam = () => {
       const imageBase64 = canvas.toDataURL('image/jpeg');
       setCapturedImage(imageBase64);
       
-      // 2. Send to GPT Vision API
-      const response = await openai.chat.completions.create({
+      // 2. Send to GPT Vision API with streaming response
+      const stream = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
@@ -110,22 +156,43 @@ const Fishcam = () => {
           },
         ],
         max_tokens: 500,
+        stream: true,
       });
 
-      const message = response.choices[0].message.content;
-      setResponse(message);
+      let fullResponse = '';
+      let currentChunk = '';
       
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        fullResponse += content;
+        currentChunk += content;
+        
+        // Accumulate text until we have a complete sentence or phrase
+        if (content.includes('.') || content.includes('!') || content.includes('?')) {
+          if (currentChunk.trim()) {
+            // Send the current chunk to TTS
+            textToSpeech(currentChunk);
+            currentChunk = '';
+          }
+        }
+        
+        // Update UI with the accumulated response
+        setResponse(fullResponse);
+      }
+
+      // Send any remaining text to TTS
+      if (currentChunk.trim()) {
+        textToSpeech(currentChunk);
+      }
+
       // Save to Firebase if fish is detected
-      if (!message.toLowerCase().includes('fish is not detected')) {
+      if (!fullResponse.toLowerCase().includes('fish is not detected')) {
         const fishData = {
-          description: message,
+          description: fullResponse,
           imageUrl: imageBase64,
         };
         await saveFishData(fishData);
       }
-      
-      // 3. Use ElevenLabs TTS
-      await textToSpeech(message);
 
     } catch (error) {
       console.error('Error:', error);
@@ -153,24 +220,36 @@ const Fishcam = () => {
   return (
     <div className="fishcam-container">
       <div className="camera-section">
-        <button 
-          onClick={handleCapture}
-          disabled={isLoading}
-          className="capture-button"
-        >
-          <span className="button-icon">📸</span>
-          {isLoading ? 'Analyzing...' : 'Capture & Analyze'}
-        </button>
-
-        {response && (
+        <div className="camera-controls">
           <button 
-            onClick={handlePlayTTS}
-            className="play-tts-button"
+            onClick={handleCapture}
+            disabled={isLoading}
+            className="capture-button"
           >
-            <span className="button-icon">🔊</span>
-            Play Again
+            <span className="button-icon">📸</span>
+            {isLoading ? 'Analyzing...' : 'Capture & Analyze'}
           </button>
-        )}
+
+          {hasMultipleCameras && (
+            <button 
+              onClick={toggleCamera}
+              className="toggle-camera-button"
+            >
+              <span className="button-icon">🔄</span>
+              Switch Camera
+            </button>
+          )}
+
+          {response && (
+            <button 
+              onClick={handlePlayTTS}
+              className="play-tts-button"
+            >
+              <span className="button-icon">🔊</span>
+              Play Again
+            </button>
+          )}
+        </div>
 
         <div className="video-container">
           <video 
