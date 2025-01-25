@@ -56,20 +56,63 @@ const Fishcam = () => {
 
   const startCamera = async () => {
     try {
+      // Stop any existing stream first
       if (videoRef.current && videoRef.current.srcObject) {
         const tracks = videoRef.current.srcObject.getTracks();
         tracks.forEach(track => track.stop());
       }
       
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
+      // Optimized camera constraints for Raspberry Pi 4B
+      const constraints = {
+        video: {
           facingMode: facingMode,
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          frameRate: { ideal: 15, max: 24 }
-        } 
-      });
-      videoRef.current.srcObject = stream;
+          width: { min: 320, ideal: 320, max: 640 },
+          height: { min: 240, ideal: 240, max: 480 },
+          frameRate: { min: 10, ideal: 10, max: 15 },
+          // Add specific settings for better performance
+          aspectRatio: { ideal: 1.333333 }, // 4:3 ratio
+          resizeMode: 'crop-and-scale'
+        },
+        audio: false // Explicitly disable audio to speed up initialization
+      };
+
+      // Try to get the stream with optimized settings
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          // Optimize video element
+          videoRef.current.setAttribute('playsinline', true);
+          videoRef.current.setAttribute('muted', true);
+          videoRef.current.setAttribute('autoplay', true);
+          
+          // Wait for video to be ready
+          await new Promise((resolve) => {
+            videoRef.current.onloadedmetadata = () => {
+              resolve();
+            };
+          });
+
+          await videoRef.current.play();
+        }
+      } catch (err) {
+        console.warn("Falling back to basic video constraints:", err);
+        // Simplified fallback for better compatibility
+        const basicStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: facingMode,
+            width: { ideal: 320 },
+            height: { ideal: 240 }
+          },
+          audio: false
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = basicStream;
+          videoRef.current.setAttribute('playsinline', true);
+          videoRef.current.setAttribute('muted', true);
+          videoRef.current.setAttribute('autoplay', true);
+        }
+      }
     } catch (err) {
       console.error("Error accessing camera:", err);
     }
