@@ -1,5 +1,5 @@
-const API_KEY = process.env.NEXT_PUBLIC_NEWS_API_KEY || process.env.REACT_APP_NEWS_API_KEY;
-const BASE_URL = 'https://newsapi.org/v2/everything';
+const API_KEY = process.env.NEXT_PUBLIC_GNEWS_API_KEY || process.env.REACT_APP_GNEWS_API_KEY;
+const BASE_URL = 'https://gnews.io/api/v4/search';
 
 const FALLBACK_NEWS = [
   {
@@ -45,18 +45,30 @@ const FALLBACK_NEWS = [
 ];
 
 export const getNews = async () => {
+  if (!API_KEY) {
+    console.warn('GNews API key is not set. Using fallback news.');
+    return FALLBACK_NEWS;
+  }
+
   try {
-    const query = encodeURIComponent('snorkeling OR snorkelling');
+    const query = encodeURIComponent('marine OR ocean OR fish');
     const response = await fetch(
-      `${BASE_URL}?q=${query}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${API_KEY}`
+      `${BASE_URL}?q=${query}&lang=en&max=10&apikey=${API_KEY}`
     );
 
     if (!response.ok) {
-      throw new Error('Failed to fetch news');
+      const errorData = await response.json().catch(() => ({}));
+      console.error('GNews API Error:', errorData);
+      throw new Error(`Failed to fetch news: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.articles;
+    return data.articles.map(article => ({
+      ...article,
+      source: { name: article.source.name },
+      urlToImage: article.image,
+      publishedAt: article.publishedAt
+    }));
   } catch (error) {
     console.error('Error fetching news:', error);
     return FALLBACK_NEWS;
@@ -64,18 +76,34 @@ export const getNews = async () => {
 };
 
 export const searchNews = async (searchTerm) => {
+  if (!API_KEY) {
+    console.warn('GNews API key is not set. Searching in fallback news.');
+    const searchLower = searchTerm.toLowerCase();
+    return FALLBACK_NEWS.filter(news => 
+      news.title.toLowerCase().includes(searchLower) || 
+      news.description.toLowerCase().includes(searchLower)
+    );
+  }
+
   try {
-    const query = encodeURIComponent(`${searchTerm} AND (snorkeling OR snorkelling)`);
+    const query = encodeURIComponent(`${searchTerm} (marine OR ocean OR fish)`);
     const response = await fetch(
-      `${BASE_URL}?q=${query}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${API_KEY}`
+      `${BASE_URL}?q=${query}&lang=en&max=10&apikey=${API_KEY}`
     );
 
     if (!response.ok) {
-      throw new Error('Failed to fetch news');
+      const errorData = await response.json().catch(() => ({}));
+      console.error('GNews API Error:', errorData);
+      throw new Error(`Failed to fetch news: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.articles;
+    return data.articles.map(article => ({
+      ...article,
+      source: { name: article.source.name },
+      urlToImage: article.image,
+      publishedAt: article.publishedAt
+    }));
   } catch (error) {
     console.error('Error searching news:', error);
     const searchLower = searchTerm.toLowerCase();
