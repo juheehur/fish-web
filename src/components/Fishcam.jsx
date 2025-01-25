@@ -15,7 +15,7 @@ const Fishcam = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [response, setResponse] = useState('');
-  const [facingMode, setFacingMode] = useState('user');
+  const [facingMode, setFacingMode] = useState('environment');
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const audioQueue = useRef([]);
   const isPlaying = useRef(false);
